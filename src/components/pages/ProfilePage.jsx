@@ -1,77 +1,111 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+
 import Navbar from "../Navbar";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../../firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { Card, Avatar, Label, TextInput, Button, FileInput } from "flowbite-react";
+import { fetchUserData, updateUserProfile } from "../../utils/userUtils";
 
+import { Card, Avatar, Label, TextInput, Button, FileInput, Toast } from "flowbite-react";
 import { LuUser, LuGavel } from "react-icons/lu";
 import { BsBoxSeam } from "react-icons/bs";
 import { FaCog, FaUserCircle } from "react-icons/fa";
+import { HiExclamation } from "react-icons/hi";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Account"); // State to track active tab
   const [data, setData] = useState(null); // State to store user data
+  const [formData , setFormData] = useState({ fName:"", lName:"", fileInput: null });
 
-  // Fetch user data from Firebase
-  const fetchUserData = async () => {
-    auth.onAuthStateChanged(async (user) => {
-      console.log("User:", user);
+  const [ShowToast, setShowToast] = useState(false)
+  const [message, setMessage] = useState("")
+
+
+  const handleChange =(e)=>{
+    setFormData({...formData, [e.target.name]: e.target.value});
+    console.log(formData);
+    console.log(data);
+  }
+
+  const onSaveChanges = async (e) => {
+    e.preventDefault();
+    try {
+      const firstName = e.target.fName.value;
+      const lastName = e.target.lName.value;
+      const fileInput = e.target.photo?.files[0];
+  
+      const result = await updateUserProfile(firstName, lastName, fileInput);
+      
+      setMessage(result.message);
+      setShowToast(true);
+  
+      // Fetch updated user data
+      const updatedUserData = await fetchUserData();
+      setData(updatedUserData);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setMessage(error.message);
+      setShowToast(true);
+    }
+  };
+  
+
+  useEffect(() => {
+    const getUserData = async () => {
       try {
-        const docRef = doc(db, "users", auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          setData({
-            ...userData,
-            photo: auth.currentUser?.photoURL || null, // Check if photoURL exists
-          });
-        } else {
-          console.log("No such document!");
-        }
+        const userData = await fetchUserData();
+        setData(userData);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
-    });
-  };
-
-  const onSaveChanges = async () => {
-    // Save changes to Firebase
-
-  };
+    };
   
-  useEffect(() => {
-    fetchUserData();
-  }, [ ]);
+    getUserData();
+  }, []);
 
   // Function to render content for the second card based on the active tab
   const renderCardContent = () => {
     switch (activeTab) {
       case "Account":
         return (
-            <div className="flex flex-col gap-4 px-6">
-                <div className="py-2">
-                    <h2 className="text-2xl font-semibold">Account Information</h2>
-                </div>
-                <div className="flex flex-col gap-2">
-                    <Label className=" ">First Name</Label>
-                    <TextInput value={data ? data.fName : " "} className="w-full" name="fName" />
-                </div>
-                <div className="flex flex-col gap-2 mt-2">
-                    <Label className=" ">Last Name</Label>
-                    <TextInput value={data ? data.lName : " "} className="w-full" name="lName" />
-                </div>
-                <div className="flex flex-col gap-2 mt-2">
-                    <Label className="">Upload Profile Picture</Label>
-                    <FileInput className="w-full" helperText="PNG, JPG or GIF." name="photo" />
-                </div>
-                <div>
-                    <Button color="dark">Save Changes</Button>
-                </div>
+          <div className="flex flex-col gap-4 px-6">
+            <div className="py-2">
+              <h2 className="text-2xl font-semibold">Account Information</h2>
             </div>
+            <form onSubmit={onSaveChanges} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label>First Name</Label>
+                <TextInput
+                  placeholder={data?.fName} // Use data state
+                  value={formData.fName}  // Use formData state
+                  className="w-full" 
+                  name="fName" 
+                  onChange={handleChange} // Add onChange handler to update state
+                />
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                <Label>Last Name</Label>
+                <TextInput
+                  placeholder={data?.lName}
+                  value={formData.lName}  // Use formData state
+                  className="w-full" 
+                  name="lName" 
+                  onChange={handleChange} // Add onChange handler to update state
+                />
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                <Label>Upload Profile Picture</Label>
+                <FileInput 
+                  className="w-full" 
+                  helperText="PNG, JPG or GIF." 
+                  name="photo" 
+                  onChange={(e) => setFormData({...formData, fileInput: e.target.files[0]})}  // Handle file input change
+                />
+              </div>
+              <div>
+                <Button color="dark" type="submit">Save Changes</Button>
+              </div>
+            </form>
+          </div>
         );
       case "Active Bids":
         return <p>Your active bids will be displayed here.</p>;
@@ -91,18 +125,28 @@ const ProfilePage = () => {
       </header>
       <main className="grid grid-cols-4 p-8 gap-4">
         {/* Sidebar with user info */}
+        {ShowToast && (
+          <Toast className="z-50 absolute right-5 top-20">
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500 dark:bg-orange-700 dark:text-orange-200">
+              <HiExclamation className="h-5 w-5" />
+            </div>
+            <div className="ml-3 text-sm font-normal">{message}</div>
+            <Toast.Toggle />
+          </Toast>)
+        }
         <aside className="col-span-1">
           <Card className="py-2 h-full">
             <div className="flex flex-row py-4 pl-2 pb-8 gap-4 mt-6 items-center">
-            <div>
-              {data?.photo ? (
-                <Avatar img={data.photo} alt="User Avatar" size="lg" rounded />
-              ) : (
-                <FaUserCircle className="h-16 w-16 text-gray-500" />
-              )}
-            </div>
               <div>
-                <h2 className="text-xl font-semibold">{data ? (data.fName +" "+ data.lName) : " "}</h2>
+                <Avatar
+                  img={data ? data.photoURL : ""}
+                  alt="User avatar"
+                  rounded
+                  placeholderInitials={(data ? data.fName.charAt(0) : "U") + (data ? data.lName.charAt(0) : "U")}
+                />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">{data ? `${data.fName} ${data.lName}` : ""}</h2>
                 <p className="text-gray-500">{""}</p>
                 <p className="text-gray-500">Member since 2021</p>
               </div>
@@ -110,39 +154,31 @@ const ProfilePage = () => {
             <div>
               <ul className="flex flex-col gap-2">
                 <li
-                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center ${
-                    activeTab === "Account" ? "bg-slate-300" : ""
-                  }`}
+                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center ${activeTab === "Account" ? "bg-slate-300" : ""}`}
                   onClick={() => setActiveTab("Account")}
                 >
-                <LuUser className="h-5 w-5 mr-2" />
+                  <LuUser className="h-5 w-5 mr-2" />
                   Account
                 </li>
                 <li
-                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${
-                    activeTab === "Active Bids" ? "bg-slate-300" : ""
-                  }`}
+                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${activeTab === "Active Bids" ? "bg-slate-300" : ""}`}
                   onClick={() => setActiveTab("Active Bids")}
                 >
-                <LuGavel className="h-5 w-5 mr-2" />
+                  <LuGavel className="h-5 w-5 mr-2" />
                   Active Bids
                 </li>
                 <li
-                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${
-                    activeTab === "Won Auctions" ? "bg-slate-300" : ""
-                  }`}
+                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${activeTab === "Won Auctions" ? "bg-slate-300" : ""}`}
                   onClick={() => setActiveTab("Won Auctions")}
                 >
-                <BsBoxSeam className="h-5 w-5 mr-2" />
+                  <BsBoxSeam className="h-5 w-5 mr-2" />
                   Won Auctions
                 </li>
                 <li
-                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${
-                    activeTab === "Settings" ? "bg-slate-300" : ""
-                  }`}
+                  className={`p-2 pl-6 ml-1 font-semibold cursor-pointer rounded-md flex items-center  ${activeTab === "Settings" ? "bg-slate-300" : ""}`}
                   onClick={() => setActiveTab("Settings")}
                 >
-                <FaCog className="h-5 w-5 mr-2" />
+                  <FaCog className="h-5 w-5 mr-2" />
                   Settings
                 </li>
               </ul>

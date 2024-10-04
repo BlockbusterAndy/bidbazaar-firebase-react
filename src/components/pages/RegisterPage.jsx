@@ -8,7 +8,7 @@ import { auth, googleProvider, db } from "../../firebase/firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, } from "firebase/auth";
 import logo from "../../assets/logo.svg";
 import { HiExclamation } from "react-icons/hi";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const RegisterPage = () => {
 
@@ -24,54 +24,55 @@ const RegisterPage = () => {
   };
 
   const signUpWithEmailPassword = async () => {
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-      const user = auth.currentUser;
-      if(user){
-        await setDoc(doc(db, "users", user.uid), {
+      await createUserWithEmailAndPassword(auth, form.email, form.password).then((result) => {
+        const user = result.user;
+        const userRef = doc(db, "users", user.uid);
+        setDoc(userRef, {
           fName: form.fName,
           lName: form.lName,
           email: form.email,
+          createdAt: new Date().toISOString(),
         });
-      }
-      setMessage("User registered successfully")
-      setShowToast(true)
-      navigate('/')
+        console.log(`User document created for ${user.uid}`);
+        navigate("/");
+      });
     } catch (error) {
       console.error("Error signing up:", error);
-      setMessage(error.message)
-      setShowToast(true)
+      setMessage(error.message);
+      setShowToast(true);
     }
   };
 
   const signUpWithGoogle = async () => {
     try {
-      const user = await signInWithPopup(auth, googleProvider)
-      if(user){
-        await setDoc(doc(db, "users", user.uid), {
-          fName: user.displayName.split(' ')[0],
-          lName: user.displayName.split(' ')[1],
-          email: user.email,
-          photo: user.photoURL
-        });
-      }
-      console.log("User logged in:");
-      setMessage("User logged in successfully");
-      setShowToast(true);
-      navigate('/')
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        const userRef = doc(db, "users", user.uid);
+        //check if user already exists
+        const userDoc = await getDoc(userRef);
+        //create user document if it doesn't exist
+        if (!userDoc.exists()) {
+          await setDoc(userRef, {
+            fName: user.displayName.split(' ')[0] || "",
+            lName: user.displayName.split(' ')[1] || "",
+            email: user.email,
+            photoURL: user.photoURL,
+            createdAt: new Date().toISOString(),
+          });
+          console.log(`User document created for ${user.uid}`);
+        } else {
+          console.log(`User document already exists for ${user.uid}`);
+        }
+        navigate("/");
+    } catch (error) {
+        console.error("Error signing in:", error);
+        setMessage(error.message);
+        setShowToast(true);
     }
-    catch (error) {
-      console.error("Error signing up:", error);
-      setMessage(error.message);
-      setShowToast(true);
-    }
-  }
+  };
 
+  
   return (
     <div>
       <header>

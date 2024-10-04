@@ -8,8 +8,9 @@ import { FaCheck } from "react-icons/fa6";
 import { HiExclamation } from "react-icons/hi";
 import { Link, useNavigate } from 'react-router-dom'
 import logo from "../../assets/logo.svg";
-import { auth, googleProvider } from "../../firebase/firebase"
+import { auth, googleProvider, db } from "../../firebase/firebase"
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false)
@@ -21,38 +22,57 @@ const LoginPage = () => {
     const navigate = useNavigate()
 
     const signInWithEmailPassword = async (e) => {
-        try {
-            const user = await signInWithEmailAndPassword(auth, form.email, form.password)
-            console.log("User logged in:");
-            setMessage("User logged in successfully");
+        if (!form.email || !form.password) {
+            setMessage("Please fill in all fields.");
             setShowToast(true);
-            navigate('/')
+            return;
+        }
+        try {
+            const user = await signInWithEmailAndPassword(auth, form.email, form.password);
+            console.log("User logged in:");
+            navigate('/');
         } catch (error) {
             console.error("Error signing up:", error);
             setMessage(error.message);
             setShowToast(true);
         }
-    }
+    }    
+
 
     const signInWithGoogle = async () => {
         try {
-            const user = await signInWithPopup(auth, googleProvider)
-            console.log("User logged in");
-            setMessage("User logged in successfully")
-            setShowToast(true)
-            navigate('/')
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+            const userRef = doc(db, "users", user.uid);
+    
+            // Check if the user already exists
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                // Create user document only if it doesn't exist
+                await setDoc(userRef, {
+                    fName: user.displayName.split(' ')[0] || "",
+                    lName: user.displayName.split(' ')[1] || "",
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    createdAt: new Date().toISOString(),
+                });
+                console.log(`User document created for ${user.uid}`);
+            } else {
+                console.log(`User document already exists for ${user.uid}`);
+            }
+    
+            navigate("/");
+        } catch (error) {
+            console.error("Error signing in:", error);
+            setMessage(error.message);
+            setShowToast(true);
         }
-        catch (error) {
-            console.error("Error signing up:", error);
-            setMessage(error.message)
-            setShowToast(true)
-        }
-    }
-
+    };
+    
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value })
         console.log(form)
-        console.log(auth?.currentUser.email)
     }
 
   return (
