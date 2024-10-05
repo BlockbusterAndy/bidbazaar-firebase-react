@@ -43,7 +43,6 @@ const Navbar = () => {
       await signOut(auth);
       setIsLoggedIn(false);
       setUserData(null);
-      navigate("/");
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -95,7 +94,7 @@ const Navbar = () => {
             <Dropdown.Item icon={HiCog}>Settings</Dropdown.Item>
             <Dropdown.Item icon={HiCurrencyDollar}>Earnings</Dropdown.Item>
             <Dropdown.Divider />
-            <Dropdown.Item icon={HiLogout} onClick={signOutAccount}>Sign out</Dropdown.Item>
+            <Dropdown.Item icon={HiLogout} onClick={signOutAccount} href="/" >Sign out</Dropdown.Item>
           </Dropdown>
         )}
       </div>

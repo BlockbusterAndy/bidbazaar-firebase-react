@@ -1,4 +1,5 @@
 import { auth, db, storage } from "../firebase/firebase";
+import { updatePassword } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import imageCompression from 'browser-image-compression';
@@ -39,8 +40,31 @@ export const fetchUserData = async () => {
         }
       });
     });
-  };
-  
+};
+
+//update user password
+export const updateUserPassword = async (currentPassword,newPassword) => {
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("No authenticated user");
+        await updatePassword(user, newPassword);
+        setMessage("Password updated successfully");
+        setShowToast(true);
+        console.log("Password updated successfully");
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const checkProvider = async () => {
+    const user = auth.currentUser;
+    const provider = user.providerData[0].providerId;
+    if (provider === "google.com") {
+        return "google";
+    } else {
+        return "email";
+    }
+}
 
 // Update user profile
 export const updateUserProfile = async (firstName, lastName, fileInput) => {

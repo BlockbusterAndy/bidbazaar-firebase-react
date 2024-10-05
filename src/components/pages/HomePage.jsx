@@ -1,12 +1,25 @@
 import React from 'react';
 import Navbar from '../Navbar';
+import { useState, useEffect } from 'react';
 import { TextInput, Button } from 'flowbite-react';
 import { IoIosSearch } from "react-icons/io";
 import { LiaGavelSolid } from "react-icons/lia";
 import { FaRegCreditCard } from "react-icons/fa6";
 import { Link } from 'react-router-dom';
+import { isUserLoggedIn } from '../../utils/userUtils';
 
 const HomePage = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const loggedIn = await isUserLoggedIn();
+      setIsLoggedIn(loggedIn);
+    };
+
+    checkAuth();
+  }, [isLoggedIn]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <header>
@@ -101,27 +114,28 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800">
-          <div className="container mx-auto px-4 md:px-6 max-w-screen-xl">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                  Ready to Start Bidding?
-                </h2>
-                <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Join BidBazaar today and discover amazing deals on unique items.
-                </p>
-              </div>
-              <div className="space-x-4 flex flex-row">
-                <Link to="/register" >
-                  <Button color="dark">Sign Up Now</Button>
-                </Link>
-                <Button color="light">Learn More</Button>
+        {!isLoggedIn && (
+          <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800">
+            <div className="container mx-auto px-4 md:px-6 max-w-screen-xl">
+              <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                    Ready to Start Bidding?
+                  </h2>
+                  <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
+                    Join BidBazaar today and discover amazing deals on unique items.
+                  </p>
+                </div>
+                <div className="space-x-4 flex flex-row">
+                  <Link to="/register" >
+                    <Button color="dark">Sign Up Now</Button>
+                  </Link>
+                  <Button color="light">Learn More</Button>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
     </div>
   );

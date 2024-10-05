@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 
 import Navbar from "../Navbar";
 import { useNavigate } from "react-router-dom";
-import { fetchUserData, updateUserProfile } from "../../utils/userUtils";
+import { fetchUserData, updateUserProfile, updateUserPassword, checkProvider } from "../../utils/userUtils";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 import { Card, Avatar, Label, TextInput, Button, FileInput, Toast } from "flowbite-react";
 import { LuUser, LuGavel } from "react-icons/lu";
@@ -15,15 +16,19 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState("Account"); // State to track active tab
   const [data, setData] = useState(null); // State to store user data
   const [formData , setFormData] = useState({ fName:"", lName:"", fileInput: null });
+  const [passwordData , setPasswordData] = useState({ currentPassword:"", newPassword:"", confirmNewPassword:"" });
 
   const [ShowToast, setShowToast] = useState(false)
   const [message, setMessage] = useState("")
-
 
   const handleChange =(e)=>{
     setFormData({...formData, [e.target.name]: e.target.value});
     console.log(formData);
     console.log(data);
+  }
+
+  const handleChangePassword =(e)=>{
+    setPasswordData({...passwordData, [e.target.name]: e.target.value});
   }
 
   const onSaveChanges = async (e) => {
@@ -32,7 +37,7 @@ const ProfilePage = () => {
       const firstName = e.target.fName.value;
       const lastName = e.target.lName.value;
       const fileInput = e.target.photo?.files[0];
-  
+
       const result = await updateUserProfile(firstName, lastName, fileInput);
       
       setMessage(result.message);
@@ -47,7 +52,14 @@ const ProfilePage = () => {
       setShowToast(true);
     }
   };
-  
+
+  const handleUpdatePassword = async (e) => {
+    sendPasswordResetEmail(auth.currentUser, auth.currentUser.email).then(() => {
+      console.log("Password reset email sent!");
+    }).catch((error) => {
+      console.error("Error sending password reset email:", error);
+    });
+  };
 
   useEffect(() => {
     const getUserData = async () => {
@@ -65,6 +77,7 @@ const ProfilePage = () => {
   // Function to render content for the second card based on the active tab
   const renderCardContent = () => {
     switch (activeTab) {
+
       case "Account":
         return (
           <div className="flex flex-col gap-4 px-6">
@@ -107,12 +120,46 @@ const ProfilePage = () => {
             </form>
           </div>
         );
+
       case "Active Bids":
         return <p>Your active bids will be displayed here.</p>;
+
       case "Won Auctions":
         return <p>List of auctions you have won will appear here.</p>;
+
       case "Settings":
-        return <p>Here you can update your settings.</p>;
+        return (
+        <div>
+          <div className="flex flex-col gap-4 px-6">
+            <div className="py-2">
+              <h2 className="text-2xl font-semibold">Account Settings</h2>
+            </div>
+            <div>
+              <div>
+                <h3 className="text-lg font-semibold">Change Password</h3>
+                <form onSubmit={handleUpdatePassword} className="flex flex-col gap-4 mt-2">
+                  <div className="flex flex-col gap-2">
+                    <Label>Current Password</Label>
+                    <TextInput type="password" className="w-full" name="currentPassword" onChange={handleChangePassword} />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label>New Password</Label>
+                    <TextInput type="password" className="w-full" name="newPassword" onChange={handleChangePassword} />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label>Confirm New Password</Label>
+                    <TextInput type="password" className="w-full" name="confirmNewPassword" onChange={handleChangePassword} />
+                  </div>
+                  <div>
+                    <Button color="dark" type="submit">Update Password</Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
       default:
         return <p>Welcome to your profile!</p>;
     }
