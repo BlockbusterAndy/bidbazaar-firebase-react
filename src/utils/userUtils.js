@@ -1,8 +1,9 @@
-import { auth, db, storage } from "../firebase/firebase";
-import { updatePassword } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import imageCompression from 'browser-image-compression';
+import { auth, db, storage, realtimeDb } from "../firebase/firebase";
+import { getDoc, addDoc, updateDoc, doc, collection, setDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref as dbRef, set } from "firebase/database";
+import imageCompression from "browser-image-compression";
+import { v4 as uuidv4 } from "uuid"; // To generate unique file names
 
 // Check if user is logged in
 export const isUserLoggedIn = () => {
@@ -115,4 +116,143 @@ export const updateUserProfile = async (firstName, lastName, fileInput) => {
     } catch (error) {
         throw error;
     }
+};
+
+// Compress and upload images
+export const compressAndUploadImages = async (images, listingId) => {
+  const promises = [];
+  const options = {
+    maxSizeMB: 0.5,
+    maxWidthOrHeight: 1920,
+    useWebWorker: true,
+  };
+
+  for (const image of Array.from(images)) {
+    promises.push(
+      new Promise(async (resolve, reject) => {
+        try {
+          const compressedFile = await imageCompression(image, options);
+          const storageRefPath = storageRef(storage, `listings/${listingId}/${uuidv4()}`);
+          const uploadTask = uploadBytesResumable(storageRefPath, compressedFile);
+
+          uploadTask.on(
+            "state_changed",
+            null,
+            (error) => reject(error),
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            }
+          );
+        } catch (error) {
+          reject(error);
+        }
+      })
+    );
+  }
+
+  return Promise.all(promises); // Return an array of download URLs
+};
+
+// Function to set the initial bid data in Realtime Database
+const setInitialBidData = async (listingId, startingPrice, sellerId) => {
+  try {
+    const bidRef = dbRef(realtimeDb, `bids/${listingId}`);
+
+    const bidData = {
+      listingId: listingId,
+      startingPrice: startingPrice,
+      currentBid: startingPrice, // Set the current bid initially as the starting price
+      sellerId: sellerId,
+      bidderId: null, // No bidder at the start
+    };
+
+    await set(bidRef, bidData);
+    console.log(`Initial bid data set for listing: ${listingId}`);
+  } catch (error) {
+    console.error('Error setting initial bid data:', error);
+    throw error;
+  }
+};
+
+// Function to set initial bid history for a listing
+const setInitialBidHistory = async (listingId) => {
+  try {
+    const bidHistoryRef = dbRef(realtimeDb, `bidHistory/${listingId}`);
+    const bidHistoryData = {
+      listingId: listingId,
+      bids: [] // No bids initially
+    };
+
+    await set(bidHistoryRef, bidHistoryData);
+    console.log(`Initial bid history set for listing: ${listingId}`);
+  } catch (error) {
+    console.error('Error setting initial bid history:', error);
+    throw error;
+  }
+};
+
+export const createListingWithImages = async (formData) => {
+  const storage = getStorage();
+  const imageUrls = []; // To store the URLs of uploaded images
+  const sellerId = auth.currentUser.uid; // Get the current user's UID
+  const uuid = uuidv4(); // Generate a unique ID for images
+
+  for (const file of formData.images) {
+    const uuid = uuidv4(); // Generate a unique ID for images
+    const storageRef = ref(storage, `listings/${uuid}`); // Create a storage reference
+
+    await uploadBytes(storageRef, file); // Upload the file
+    const downloadURL = await getDownloadURL(storageRef); // Get the download URL
+    imageUrls.push(downloadURL); // Push the URL to the array
+  }
+
+  // Create the listing object with image URLs
+  const listingData = {
+    itemName: formData.itemName,
+    description: formData.description,
+    category: formData.category,
+    startingPrice: parseFloat(formData.startingPrice),
+    endDate: formData.endDate,
+    endTime: formData.endTime,
+    hasAuthenticityDocument: formData.hasAuthenticityDocument,
+    images: imageUrls, // Store the URLs instead of File objects
+    sellerId: sellerId
+  };
+
+  // Save the listing data to Firestore
+  const listingRef = doc(collection(db, "listings")); // Assuming 'listings' is your collection name
+  await setDoc(listingRef, listingData);
+  await setInitialBidData(listingRef.id, listingData.startingPrice, listingData.sellerId); // Use sellerId here
+  await setInitialBidHistory(listingRef.id);
+
+  return { message: "Listing created successfully", listingId: listingRef.id };
+};
+
+
+export const getListingById = async (listingId) => {
+  try {
+    const listingRef = doc(db, "listings", listingId);
+    const listingSnap = await getDoc(listingRef);
+
+    if (listingSnap.exists()) {
+      return { id: listingSnap.id, ...listingSnap.data() };
+    } else {
+      throw new Error("No such listing!");
+    }
+  } catch (error) {
+    console.error("Error fetching listing data:", error);
+    throw error;
+  }
+};
+
+export const getListingData = async (id) => {
+  const listingRef = doc(db, 'listings', id); // Assuming your collection is named 'listings'
+  const listingSnap = await getDoc(listingRef);
+
+  if (listingSnap.exists()) {
+      return listingSnap.data();
+  } else {
+      throw new Error('No such listing!');
+  }
 };

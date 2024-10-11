@@ -34,7 +34,7 @@ const App = () => {
       element: <CreateListing />,
     },
     {
-      path: '/listing',
+      path: '/listing/:id',
       element: <Listing />,
     }
   ]);

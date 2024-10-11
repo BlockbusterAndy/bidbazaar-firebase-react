@@ -7,7 +7,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
     flowbite.content(),
   ],
+
   theme: {
+    colors:{
+      primarybg:'#f3f4f6',
+    },
     extend: {},
   },
   plugins: [

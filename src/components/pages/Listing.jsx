@@ -7,6 +7,8 @@ import CardLayout from '../CardLayout';
 import { IoMdTime } from "react-icons/io";
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { getListingById } from '../../utils/userUtils';
+import { get } from 'firebase/database';
 
 const Listing = () => {
     const [currentBid, setCurrentBid] = useState(0);
@@ -25,6 +27,9 @@ const Listing = () => {
 
     useEffect(() => {
         setCurrentBid(200);
+        getListingById('ruRLOcXh3BS7ZeYfJy7N').then((listing) => {
+            console.log('Listing:', listing);
+        });
     }, []);
 
     useEffect(() => {
@@ -55,7 +60,7 @@ const Listing = () => {
                                     <span className='text-slate-500'>2 Hours ago</span>
                                 </div>
                             </div>
-                            <hr class="border-1 mt-1"></hr>
+                            <hr className="border-1 mt-1"></hr>
                         </div>
                     </div>
                 </div>
@@ -96,7 +101,7 @@ const Listing = () => {
             <header>
                 <Navbar />
             </header>
-            <main className='px-[5vw] pt-[5vw]'>
+            <main className='px-[5vw] pt-[5vw] bg-gray-200 min-h-[93vh]'>
                 <div className="grid grid-cols-2 grid-rows-5 gap-y-4 gap-x-6 max-h-[75vh]">
 
                     <div className="row-span-3 h-[45vh] relative">
@@ -105,12 +110,12 @@ const Listing = () => {
                             <img src="https://via.placeholder.com/500" alt="placeholder" />
                             <img src="https://via.placeholder.com/500" alt="placeholder" />
                         </Carousel>
-                        <div className='authentic-checkmark flex flex-row items-center justify-center gap-2 absolute right-2 top-2 z-50 px-3 py-2 bg-lime-600 rounded-full opacity-90'>
-                            <LuCheckCircle size={15} className='text-white' /> <span className='text-sm font-medium text-white'>Authentic</span>
+                        <div className='authentic-checkmark bg-lime-600 border-1 flex flex-row items-center justify-center gap-2 absolute right-2 top-2 z-50 px-3 py-2 rounded-full opacity-90'>
+                            <LuCheckCircle size={15} className='text-black' /> <span className='text-sm font-medium text-black'>Authentic</span>
                         </div>
                     </div>
 
-                    <div className="row-span-2 col-start-1 row-start-4">
+                    <div className="row-span-2 col-start-1 row-start-4 ">
                         <ListingCard itemName={'Vintage leica M3 Camera'} itemCategory={'Cameras'} itemDescription={'Lorem ipsum, dolor sit amet consectetur adipisicing elit. Voluptatum quae assumenda consequatur odit ad qui inventore, odio sit quibusdam harum nam exercitationem! Ab officiis natus blanditiis numquam nobis, omnis sint.'} />
                     </div>
 
